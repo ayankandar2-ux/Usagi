@@ -82,7 +82,9 @@ class PdfPageRenderer @Inject constructor(
 			// One bitmap, sized to this page only. RGB_565 halves memory vs ARGB_8888,
 			// which matters on the low-end devices this app targets; PDF pages don't need
 			// an alpha channel.
-			val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.RGB_565)
+			// PdfRenderer.Page.render() requires an ARGB_8888 destination bitmap; other
+			// configs (e.g. RGB_565, which would have halved memory use) throw here.
+			val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
 			try {
 				bitmap.eraseColor(Color.WHITE)
 				page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
