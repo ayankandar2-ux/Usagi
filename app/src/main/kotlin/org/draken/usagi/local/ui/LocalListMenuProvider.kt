@@ -34,6 +34,11 @@ class LocalListMenuProvider(
 				true
 			}
 
+			R.id.action_offline_reader -> {
+				fragment.router.openOfflineReader()
+				true
+			}
+
 			R.id.action_filter -> {
 				fragment.router.showFilterSheet()
 				true

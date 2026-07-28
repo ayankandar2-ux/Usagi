@@ -65,6 +65,7 @@ import org.draken.usagi.core.util.progress.ProgressDeferred
 import org.draken.usagi.download.ui.worker.DownloadSlowdownDispatcher
 import org.draken.usagi.local.data.LocalStorageCache
 import org.draken.usagi.local.data.PageCache
+import org.draken.usagi.local.data.pdf.PdfPageRenderer
 import tsuki.model.MangaPage
 import tsuki.model.MangaSource
 import tsuki.util.runCatchingCancellable
@@ -88,6 +89,7 @@ class PageLoader @Inject constructor(
 	private val mangaRepositoryFactory: MangaRepository.Factory,
 	private val interceptor: Interceptor,
 	private val downloadSlowdownDispatcher: DownloadSlowdownDispatcher,
+	private val pdfPageRenderer: PdfPageRenderer,
 ) {
 
 	val loaderScope = lifecycle.lifecycleScope + InternalErrorHandler() + Dispatchers.Default
@@ -284,6 +286,19 @@ class PageLoader @Inject constructor(
 		}
 		val uri = pageUrl.toUri()
 		return when {
+			PdfPageRenderer.isPdfPageUri(uri) -> {
+				val pdfUri = checkNotNull(PdfPageRenderer.parsePdfUri(uri)) { "Malformed pdf page uri: $uri" }
+				val pageIndex = checkNotNull(PdfPageRenderer.parsePageIndex(uri)) { "Malformed pdf page uri: $uri" }
+				val rendered = pdfPageRenderer.renderPage(
+					pdfUri = pdfUri,
+					pageIndex = pageIndex,
+					cacheKey = pageUrl,
+					cache = cache,
+				)
+				checkNotNull(rendered) { "Could not render pdf page $pageIndex of $pdfUri" }
+				rendered.toUri()
+			}
+
 			uri.isZipUri() -> if (uri.scheme == URI_SCHEME_ZIP) {
 				uri
 			} else { // legacy uri

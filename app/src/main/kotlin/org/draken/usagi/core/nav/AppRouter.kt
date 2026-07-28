@@ -79,6 +79,7 @@ import org.draken.usagi.list.ui.config.ListConfigBottomSheet
 import org.draken.usagi.list.ui.config.ListConfigSection
 import org.draken.usagi.local.ui.ImportDialogFragment
 import org.draken.usagi.local.ui.info.LocalInfoDialog
+import org.draken.usagi.local.ui.offline.OfflineReaderActivity
 import org.draken.usagi.main.ui.MainActivity
 import org.draken.usagi.main.ui.welcome.WelcomeSheet
 import tsuki.model.Manga
@@ -176,6 +177,10 @@ class AppRouter private constructor(
             activityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
         }
         startActivity(activityIntent, anchor?.let { view -> scaleUpActivityOptionsOf(view) })
+    }
+
+    fun openOfflineReader() {
+        startActivity(Intent(contextOrNull() ?: return, OfflineReaderActivity::class.java))
     }
 
     fun openAlternatives(manga: Manga) {

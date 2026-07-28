@@ -21,4 +21,10 @@
 		android:title="@string/directories"
 		app:showAsAction="never" />
 
+	<item
+		android:id="@+id/action_offline_reader"
+		android:orderInCategory="85"
+		android:title="@string/offline_reader"
+		app:showAsAction="never" />
+
 </menu>

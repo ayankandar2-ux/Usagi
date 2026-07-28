@@ -217,6 +217,9 @@
 			android:name="org.draken.usagi.settings.storage.directories.MangaDirectoriesActivity"
 			android:label="@string/local_manga_directories" />
 		<activity
+			android:name="org.draken.usagi.local.ui.offline.OfflineReaderActivity"
+			android:label="@string/offline_reader" />
+		<activity
 			android:name="org.draken.usagi.browser.BrowserActivity"
 			android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
 			android:windowSoftInputMode="adjustResize" />

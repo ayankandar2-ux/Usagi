@@ -1,5 +1,6 @@
 package org.draken.usagi.local.data
 
+import android.net.Uri
 import androidx.core.net.toFile
 import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +25,8 @@ import org.draken.usagi.local.data.index.LocalMangaIndex
 import org.draken.usagi.local.data.input.LocalMangaParser
 import org.draken.usagi.local.data.output.LocalMangaOutput
 import org.draken.usagi.local.data.output.LocalMangaUtil
+import org.draken.usagi.local.data.pdf.PdfMangaParser
+import org.draken.usagi.local.data.pdf.PdfPageRenderer
 import org.draken.usagi.local.domain.MangaLock
 import org.draken.usagi.local.domain.model.LocalManga
 import tsuki.model.ContentRating
@@ -53,6 +56,7 @@ class LocalMangaRepository @Inject constructor(
 	@LocalStorageChanges private val localStorageChanges: MutableSharedFlow<LocalManga?>,
 	private val settings: AppSettings,
 	private val lock: MangaLock,
+	private val pdfPageRenderer: PdfPageRenderer,
 ) : MangaRepository {
 
 	override val source = LocalMangaSource
@@ -128,6 +132,14 @@ class LocalMangaRepository @Inject constructor(
 	}
 
 	override suspend fun getDetails(manga: Manga): Manga = when {
+		PdfMangaParser.isPdfDocUri(manga.url.toUri()) -> {
+			val docUri = requireNotNull(PdfMangaParser.parseDocUri(manga.url.toUri())) {
+				"Malformed pdf doc uri: ${manga.url}"
+			}
+			val parsed = PdfMangaParser(docUri, manga.title, pdfPageRenderer).getManga(withDetails = true)
+			requireNotNull(parsed) { "Could not read pdf: $docUri" }.manga
+		}
+
 		!manga.isLocal -> requireNotNull(findSavedManga(manga, withDetails = true)?.manga) {
 			"Manga is not local or saved"
 		}
@@ -136,7 +148,14 @@ class LocalMangaRepository @Inject constructor(
 	}
 
 	override suspend fun getPages(chapter: MangaChapter): List<MangaPage> {
-		return LocalMangaParser(chapter.url.toUri()).getPages(chapter)
+		val chapterUri = chapter.url.toUri()
+		if (PdfMangaParser.isPdfDocUri(chapterUri)) {
+			val docUri = requireNotNull(PdfMangaParser.parseDocUri(chapterUri)) {
+				"Malformed pdf doc uri: ${chapter.url}"
+			}
+			return PdfMangaParser(docUri, chapter.title, pdfPageRenderer).getPages(chapter)
+		}
+		return LocalMangaParser(chapterUri).getPages(chapter)
 	}
 
 	suspend fun delete(manga: Manga): Boolean {
