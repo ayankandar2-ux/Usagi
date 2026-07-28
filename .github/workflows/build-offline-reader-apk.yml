@@ -22,9 +22,30 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        id: build
+        continue-on-error: true
+        run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build-output.log
+
+      - name: Post build log tail as commit comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAIL=$(tail -c 55000 build-output.log)
+          STATUS="${{ steps.build.outcome }}"
+          BODY=$(printf '### Build result: %s\n\n```\n%s\n```' "$STATUS" "$TAIL")
+          curl -s -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
+            -d "$(python3 -c 'import json,sys; print(json.dumps({"body": sys.stdin.read()}))' <<< "$BODY")"
+
+      - name: Fail job if build failed
+        if: steps.build.outcome == 'failure'
+        run: exit 1
 
       - name: Upload APK artifact
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: usagi-offline-reader-debug-apk
