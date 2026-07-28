@@ -3,6 +3,7 @@ package org.draken.usagi.local.data.output
 import androidx.core.net.toFile
 import androidx.core.net.toUri
 import org.draken.usagi.core.model.isLocal
+import org.draken.usagi.local.data.pdf.PdfMangaParser
 import tsuki.model.Manga
 
 class LocalMangaUtil(
@@ -14,7 +15,11 @@ class LocalMangaUtil(
 	}
 
 	suspend fun deleteChapters(ids: Set<Long>) {
-		val file = manga.url.toUri().toFile()
+		val uri = manga.url.toUri()
+		check(!PdfMangaParser.isPdfDocUri(uri)) {
+			"Deleting individual chapters isn't supported for PDF-backed manga"
+		}
+		val file = uri.toFile()
 		if (file.isDirectory) {
 			LocalMangaDirOutput(file, manga).use { output ->
 				output.deleteChapters(ids)
