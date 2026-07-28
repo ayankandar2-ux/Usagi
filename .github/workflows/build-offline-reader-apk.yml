@@ -51,3 +51,15 @@ jobs:
           name: usagi-offline-reader-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 14
+
+      - name: Publish APK to a release
+        if: steps.build.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+          gh release delete offline-reader-debug --yes || true
+          gh release create offline-reader-debug "$APK" \
+            --title "Offline Reader debug APK" \
+            --notes "Automated debug build from ${{ github.sha }}" \
+            --target "${{ github.sha }}"
