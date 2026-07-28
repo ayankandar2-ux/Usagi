@@ -153,7 +153,7 @@ class LocalMangaRepository @Inject constructor(
 			val docUri = requireNotNull(PdfMangaParser.parseDocUri(chapterUri)) {
 				"Malformed pdf doc uri: ${chapter.url}"
 			}
-			return PdfMangaParser(docUri, chapter.title, pdfPageRenderer).getPages(chapter)
+			return PdfMangaParser(docUri, chapter.title.orEmpty(), pdfPageRenderer).getPages(chapter)
 		}
 		return LocalMangaParser(chapterUri).getPages(chapter)
 	}
