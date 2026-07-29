@@ -28,6 +28,13 @@ import javax.inject.Singleton
  *   into memory at once; only [PdfRenderer] keeps a lightweight handle to the file itself.
  * - Every file/PDF operation is wrapped so a single corrupt or unreadable PDF page returns
  *   null instead of crashing the caller.
+ *
+ * Performance: opening a [PdfRenderer] (SAF file descriptor + parsing the PDF's internal page
+ * table) is the expensive part — actually rendering one page is comparatively cheap. The most
+ * recently used renderer is kept open across calls (see [cachedUri]/[cachedRenderer]) so
+ * flipping through consecutive pages of the same PDF only pays that cost once, not per page.
+ * Only one renderer is ever kept open at a time, bounding the resource cost to a single file
+ * descriptor; switching to a different PDF closes the previous one first.
  */
 @Singleton
 class PdfPageRenderer @Inject constructor(
@@ -35,8 +42,12 @@ class PdfPageRenderer @Inject constructor(
 ) {
 
 	// PdfRenderer (and PdfRenderer.Page) are not thread-safe, and only one Page may be
-	// open on a given PdfRenderer at a time. This mutex serializes all access.
+	// open on a given PdfRenderer at a time. This mutex serializes all access, and also
+	// guards the small open-renderer cache below.
 	private val mutex = Mutex()
+
+	private var cachedUri: Uri? = null
+	private var cachedRenderer: PdfRenderer? = null
 
 	/**
 	 * Renders [pageIndex] (0-based) of the PDF at [pdfUri] into the shared [cache] and
@@ -51,25 +62,32 @@ class PdfPageRenderer @Inject constructor(
 	): File? = mutex.withLock {
 		withContext(Dispatchers.IO) {
 			runCatchingCancellable {
-				openRenderer(pdfUri)?.use { renderer ->
+				getOrOpenRendererLocked(pdfUri)?.let { renderer ->
 					if (pageIndex !in 0 until renderer.pageCount) {
-						return@use null
+						return@runCatchingCancellable null
 					}
 					renderPageInternal(renderer, pageIndex, cacheKey, cache)
 				}
 			}.onFailure { e ->
 				e.printStackTraceDebug()
+				// The cached renderer may be in a bad state (e.g. the underlying file
+				// changed or its descriptor died) — drop it so the next call starts fresh
+				// instead of repeatedly failing against a broken cached instance.
+				closeCachedLocked()
 			}.getOrNull()
 		}
 	}
 
 	/** Returns the page count of the PDF, or null if it cannot be opened/parsed. */
-	suspend fun getPageCount(pdfUri: Uri): Int? = withContext(Dispatchers.IO) {
-		runCatchingCancellable {
-			openRenderer(pdfUri)?.use { it.pageCount }
-		}.onFailure { e ->
-			e.printStackTraceDebug()
-		}.getOrNull()
+	suspend fun getPageCount(pdfUri: Uri): Int? = mutex.withLock {
+		withContext(Dispatchers.IO) {
+			runCatchingCancellable {
+				getOrOpenRendererLocked(pdfUri)?.pageCount
+			}.onFailure { e ->
+				e.printStackTraceDebug()
+				closeCachedLocked()
+			}.getOrNull()
+		}
 	}
 
 	private suspend fun renderPageInternal(
@@ -79,9 +97,7 @@ class PdfPageRenderer @Inject constructor(
 		cache: LocalStorageCache,
 	): File? = runCatchingCancellable {
 		renderer.openPage(pageIndex).use { page ->
-			// One bitmap, sized to this page only. RGB_565 halves memory vs ARGB_8888,
-			// which matters on the low-end devices this app targets; PDF pages don't need
-			// an alpha channel.
+			// One bitmap, sized to this page only, recycled immediately after use.
 			// PdfRenderer.Page.render() requires an ARGB_8888 destination bitmap; other
 			// configs (e.g. RGB_565, which would have halved memory use) throw here.
 			val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
@@ -96,6 +112,30 @@ class PdfPageRenderer @Inject constructor(
 	}.onFailure { e ->
 		e.printStackTraceDebug()
 	}.getOrNull()
+
+	/**
+	 * Returns the already-open renderer for [pdfUri] if that's what's cached, otherwise
+	 * closes whatever is cached (if anything) and opens a fresh one. Must be called while
+	 * holding [mutex].
+	 */
+	private fun getOrOpenRendererLocked(pdfUri: Uri): PdfRenderer? {
+		cachedRenderer?.let { renderer ->
+			if (cachedUri == pdfUri) {
+				return renderer
+			}
+		}
+		closeCachedLocked()
+		val renderer = openRenderer(pdfUri) ?: return null
+		cachedUri = pdfUri
+		cachedRenderer = renderer
+		return renderer
+	}
+
+	private fun closeCachedLocked() {
+		runCatchingCancellable { cachedRenderer?.close() }.onFailure { it.printStackTraceDebug() }
+		cachedRenderer = null
+		cachedUri = null
+	}
 
 	private fun openRenderer(pdfUri: Uri): PdfRenderer? = runCatchingCancellable {
 		val pfd: ParcelFileDescriptor = context.contentResolver.openFileDescriptor(pdfUri, "r")

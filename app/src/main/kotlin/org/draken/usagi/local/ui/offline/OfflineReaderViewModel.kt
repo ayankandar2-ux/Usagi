@@ -20,6 +20,7 @@ class OfflineReaderViewModel @Inject constructor(
 	private val scanner: OfflineFolderScanner,
 	private val openOfflineFile: OpenOfflineFileUseCase,
 	private val storageManager: LocalStorageManager,
+	private val prefs: OfflineReaderPrefs,
 ) : BaseViewModel() {
 
 	private val _items = MutableStateFlow(emptyList<OfflineFile>())
@@ -29,6 +30,12 @@ class OfflineReaderViewModel @Inject constructor(
 	val hasScannedOnce = _hasScannedOnce.asStateFlow()
 
 	private var lastTreeUri: Uri? = null
+
+	init {
+		// Auto-restore the last folder the user picked, so they don't have to re-pick it
+		// every time they open this screen.
+		prefs.lastFolderUri?.let { onFolderPicked(it) }
+	}
 
 	private val _onMangaReady = MutableEventFlow<OpenOfflineResult>()
 	val onMangaReady get() = _onMangaReady
@@ -40,6 +47,7 @@ class OfflineReaderViewModel @Inject constructor(
 			// without asking the user to pick it again.
 			storageManager.takePermissions(treeUri)
 			lastTreeUri = treeUri
+			prefs.lastFolderUri = treeUri
 			_items.value = scanner.scan(treeUri)
 			_hasScannedOnce.value = true
 		}
