@@ -62,7 +62,8 @@ class DiscordRpc @Inject constructor(
 	private var rpcUpdateJob: Job? = null
 	private var assetRegistrar: DiscordAssetRegistrar? = null
 	private var registrarToken: String? = null
-	private val apiInstance = API()
+	private val apiInstanceLazy = lazy { API() }
+	private val apiInstance by apiInstanceLazy
 
 	@Volatile
 	private var lastPresence: RichPresence? = null
@@ -73,7 +74,9 @@ class DiscordRpc @Inject constructor(
 
 	override fun onCleared() {
 		clearRpc()
-		apiInstance.close()
+		if (apiInstanceLazy.isInitialized()) {
+			apiInstance.close()
+		}
 	}
 
 	fun clearRpc() = synchronized(this) {
