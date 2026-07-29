@@ -58,6 +58,7 @@ class LocalMangaRepository @Inject constructor(
 	private val settings: AppSettings,
 	private val lock: MangaLock,
 	private val pdfPageRenderer: PdfPageRenderer,
+	private val offlineSeriesResolver: org.draken.usagi.local.domain.offline.OfflineSeriesResolver,
 ) : MangaRepository {
 
 	override val source = LocalMangaSource
@@ -133,7 +134,14 @@ class LocalMangaRepository @Inject constructor(
 	}
 
 	override suspend fun getDetails(manga: Manga): Manga = when {
-		isOfflineSeriesUri(manga.url.toUri()) -> manga
+		isOfflineSeriesUri(manga.url.toUri()) -> {
+			val (rootUri, seriesKey) = requireNotNull(
+				org.draken.usagi.local.data.pdf.parseOfflineSeriesUri(manga.url.toUri()),
+			) { "Malformed offline series uri: ${manga.url}" }
+			requireNotNull(offlineSeriesResolver.buildManga(rootUri, seriesKey)) {
+				"Could not read offline series: $seriesKey"
+			}
+		}
 
 		PdfMangaParser.isPdfDocUri(manga.url.toUri()) -> {
 			val docUri = requireNotNull(PdfMangaParser.parseDocUri(manga.url.toUri())) {

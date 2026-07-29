@@ -53,16 +53,26 @@ val offlineFileChapterOrder: Comparator<OfflineFile> = compareBy(
 private const val URI_SCHEME_OFFLINE_SERIES = "usagi-offline-series"
 
 /**
- * A stable, made-up uri identifying a whole grouped series (not any single file). Used as
- * [tsuki.model.Manga.url] for a manga built by grouping several chapter files together —
- * see [org.draken.usagi.local.domain.offline.OpenOfflineFileUseCase]. There's no real
- * resource behind it: the manga's chapter list is already fully known at scan time, so
- * [org.draken.usagi.local.data.LocalMangaRepository.getDetails] just returns it unchanged.
+ * A stable, made-up uri identifying a whole grouped series (not any single file) — encodes
+ * both the scanned folder root and the series key, so the chapter list can be rebuilt from
+ * scratch by re-scanning [rootUri] and filtering to [seriesKey]. This matters because the
+ * app doesn't always hand [org.draken.usagi.local.data.LocalMangaRepository.getDetails] the
+ * fully-populated Manga we originally built — e.g. after it round-trips through history/
+ * favorites storage — so getDetails must be able to reconstruct the chapters on its own
+ * rather than merely returning whatever (possibly chapter-less) Manga it was given.
  */
-fun buildOfflineSeriesUri(seriesKey: String): Uri = Uri.Builder()
+fun buildOfflineSeriesUri(rootUri: Uri, seriesKey: String): Uri = Uri.Builder()
 	.scheme(URI_SCHEME_OFFLINE_SERIES)
 	.authority("series")
+	.appendQueryParameter("root", rootUri.toString())
 	.appendQueryParameter("key", seriesKey)
 	.build()
 
 fun isOfflineSeriesUri(uri: Uri): Boolean = uri.scheme == URI_SCHEME_OFFLINE_SERIES
+
+/** Recovers (root folder uri, series key) from a wrapped series uri, or null if malformed. */
+fun parseOfflineSeriesUri(uri: Uri): Pair<Uri, String>? {
+	val root = uri.getQueryParameter("root")?.let(Uri::parse) ?: return null
+	val key = uri.getQueryParameter("key") ?: return null
+	return root to key
+}

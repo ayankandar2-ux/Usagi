@@ -28,6 +28,8 @@ class OfflineReaderViewModel @Inject constructor(
 	private val _hasScannedOnce = MutableStateFlow(false)
 	val hasScannedOnce = _hasScannedOnce.asStateFlow()
 
+	private var lastTreeUri: Uri? = null
+
 	private val _onMangaReady = MutableEventFlow<OpenOfflineResult>()
 	val onMangaReady get() = _onMangaReady
 
@@ -37,14 +39,16 @@ class OfflineReaderViewModel @Inject constructor(
 			// Persist the grant so the folder can be re-scanned across app restarts
 			// without asking the user to pick it again.
 			storageManager.takePermissions(treeUri)
+			lastTreeUri = treeUri
 			_items.value = scanner.scan(treeUri)
 			_hasScannedOnce.value = true
 		}
 	}
 
 	fun onFileClick(file: OfflineFile) {
+		val rootUri = lastTreeUri ?: return
 		launchLoadingJob(Dispatchers.Default) {
-			val result = openOfflineFile(file, items.value)
+			val result = openOfflineFile(file, rootUri)
 			if (result != null) {
 				_onMangaReady.call(result)
 			} else {
