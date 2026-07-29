@@ -12,6 +12,7 @@ import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import org.draken.usagi.R
 import org.draken.usagi.core.exceptions.resolve.SnackbarErrorObserver
+import org.draken.usagi.core.nav.ReaderIntent
 import org.draken.usagi.core.nav.router
 import org.draken.usagi.core.os.OpenDocumentTreeHelper
 import org.draken.usagi.core.ui.BaseActivity
@@ -20,6 +21,7 @@ import org.draken.usagi.core.util.ext.observe
 import org.draken.usagi.core.util.ext.observeEvent
 import org.draken.usagi.core.util.ext.tryLaunch
 import org.draken.usagi.databinding.ActivityOfflineReaderBinding
+import org.draken.usagi.reader.ui.ReaderState
 
 @AndroidEntryPoint
 class OfflineReaderActivity : BaseActivity<ActivityOfflineReaderBinding>() {
@@ -53,8 +55,12 @@ class OfflineReaderActivity : BaseActivity<ActivityOfflineReaderBinding>() {
 			viewBinding.textViewEmpty.isVisible = items.isEmpty() && viewModel.hasScannedOnce.value
 		}
 		viewModel.isLoading.observe(this) { viewBinding.progressBar.isVisible = it }
-		viewModel.onMangaReady.observeEvent(this) { manga ->
-			router.openReader(manga)
+		viewModel.onMangaReady.observeEvent(this) { result ->
+			val intent = ReaderIntent.Builder(this)
+				.manga(result.manga)
+				.state(ReaderState(chapterId = result.chapterId, page = 0, scroll = 0))
+				.build()
+			router.openReader(intent)
 		}
 		viewModel.onError.observeEvent(
 			this,

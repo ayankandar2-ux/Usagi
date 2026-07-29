@@ -41,6 +41,7 @@ class OfflineFolderScanner @Inject constructor(
 
 		val result = ArrayList<OfflineFile>()
 		scanInto(root, recursive, result)
+		result.sortWith(offlineFileChapterOrder)
 		result
 	}
 

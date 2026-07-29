@@ -27,6 +27,7 @@ import org.draken.usagi.local.data.output.LocalMangaOutput
 import org.draken.usagi.local.data.output.LocalMangaUtil
 import org.draken.usagi.local.data.pdf.PdfMangaParser
 import org.draken.usagi.local.data.pdf.PdfPageRenderer
+import org.draken.usagi.local.data.pdf.isOfflineSeriesUri
 import org.draken.usagi.local.domain.MangaLock
 import org.draken.usagi.local.domain.model.LocalManga
 import tsuki.model.ContentRating
@@ -132,6 +133,8 @@ class LocalMangaRepository @Inject constructor(
 	}
 
 	override suspend fun getDetails(manga: Manga): Manga = when {
+		isOfflineSeriesUri(manga.url.toUri()) -> manga
+
 		PdfMangaParser.isPdfDocUri(manga.url.toUri()) -> {
 			val docUri = requireNotNull(PdfMangaParser.parseDocUri(manga.url.toUri())) {
 				"Malformed pdf doc uri: ${manga.url}"

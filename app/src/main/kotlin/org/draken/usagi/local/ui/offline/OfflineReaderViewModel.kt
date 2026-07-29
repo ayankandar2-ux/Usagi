@@ -12,7 +12,7 @@ import org.draken.usagi.local.data.LocalStorageManager
 import org.draken.usagi.local.data.pdf.OfflineFile
 import org.draken.usagi.local.data.pdf.OfflineFolderScanner
 import org.draken.usagi.local.domain.offline.OpenOfflineFileUseCase
-import tsuki.model.Manga
+import org.draken.usagi.local.domain.offline.OpenOfflineResult
 import javax.inject.Inject
 
 @HiltViewModel
@@ -28,7 +28,7 @@ class OfflineReaderViewModel @Inject constructor(
 	private val _hasScannedOnce = MutableStateFlow(false)
 	val hasScannedOnce = _hasScannedOnce.asStateFlow()
 
-	private val _onMangaReady = MutableEventFlow<Manga>()
+	private val _onMangaReady = MutableEventFlow<OpenOfflineResult>()
 	val onMangaReady get() = _onMangaReady
 
 	/** Called after the user picks a folder via ACTION_OPEN_DOCUMENT_TREE. */
@@ -44,9 +44,9 @@ class OfflineReaderViewModel @Inject constructor(
 
 	fun onFileClick(file: OfflineFile) {
 		launchLoadingJob(Dispatchers.Default) {
-			val manga = openOfflineFile(file)
-			if (manga != null) {
-				_onMangaReady.call(manga)
+			val result = openOfflineFile(file, items.value)
+			if (result != null) {
+				_onMangaReady.call(result)
 			} else {
 				errorEvent.call(IllegalStateException("Could not open ${file.displayName}"))
 			}
