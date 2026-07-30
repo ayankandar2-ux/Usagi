@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:layout_margin="2dp"
+	android:background="@drawable/custom_selectable_item_background"
+	android:clickable="true"
+	android:focusable="true"
+	android:orientation="vertical"
+	android:padding="6dp"
+	tools:layout_width="140dp">
+
+	<org.draken.usagi.image.ui.CoverImageView
+		android:id="@+id/imageViewCover"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:background="?colorSurfaceContainer"
+		app:allowRgb565="true"
+		app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Usagi.Cover"
+		tools:ignore="ContentDescription"
+		tools:src="@tools:sample/backgrounds/scenic[5]" />
+
+	<TextView
+		android:id="@+id/textViewTitle"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:ellipsize="end"
+		android:lines="2"
+		android:paddingVertical="4dp"
+		android:textAppearance="?attr/textAppearanceTitleSmall"
+		android:textColor="?android:attr/textColorPrimary"
+		tools:text="@tools:sample/lorem" />
+
+</LinearLayout>

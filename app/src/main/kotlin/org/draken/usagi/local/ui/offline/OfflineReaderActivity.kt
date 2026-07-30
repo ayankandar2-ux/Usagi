@@ -12,7 +12,6 @@ import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import org.draken.usagi.R
 import org.draken.usagi.core.exceptions.resolve.SnackbarErrorObserver
-import org.draken.usagi.core.nav.ReaderIntent
 import org.draken.usagi.core.nav.router
 import org.draken.usagi.core.os.OpenDocumentTreeHelper
 import org.draken.usagi.core.ui.BaseActivity
@@ -21,7 +20,6 @@ import org.draken.usagi.core.util.ext.observe
 import org.draken.usagi.core.util.ext.observeEvent
 import org.draken.usagi.core.util.ext.tryLaunch
 import org.draken.usagi.databinding.ActivityOfflineReaderBinding
-import org.draken.usagi.reader.ui.ReaderState
 
 @AndroidEntryPoint
 class OfflineReaderActivity : BaseActivity<ActivityOfflineReaderBinding>() {
@@ -41,7 +39,7 @@ class OfflineReaderActivity : BaseActivity<ActivityOfflineReaderBinding>() {
 		setDisplayHomeAsUp(isEnabled = true, showUpAsClose = false)
 		title = getString(R.string.offline_reader)
 
-		val adapter = OfflineFileAdapter { file -> viewModel.onFileClick(file) }
+		val adapter = OfflineFolderAdapter { manga -> viewModel.onLibraryItemClick(manga) }
 		viewBinding.recyclerView.adapter = adapter
 
 		viewBinding.fabSelectFolder.setOnClickListener {
@@ -50,17 +48,13 @@ class OfflineReaderActivity : BaseActivity<ActivityOfflineReaderBinding>() {
 			}
 		}
 
-		viewModel.items.observe(this) { items ->
-			adapter.submitList(items)
-			viewBinding.textViewEmpty.isVisible = items.isEmpty() && viewModel.hasScannedOnce.value
+		viewModel.library.observe(this) { library ->
+			adapter.submitList(library)
+			viewBinding.textViewEmpty.isVisible = library.isEmpty() && viewModel.hasLoadedOnce.value
 		}
 		viewModel.isLoading.observe(this) { viewBinding.progressBar.isVisible = it }
-		viewModel.onMangaReady.observeEvent(this) { result ->
-			val intent = ReaderIntent.Builder(this)
-				.manga(result.manga)
-				.state(ReaderState(chapterId = result.chapterId, page = 0, scroll = 0))
-				.build()
-			router.openReader(intent)
+		viewModel.onMangaReady.observeEvent(this) { manga ->
+			router.openDetails(manga)
 		}
 		viewModel.onError.observeEvent(
 			this,

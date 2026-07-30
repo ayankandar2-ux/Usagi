@@ -27,7 +27,8 @@ import org.draken.usagi.local.data.output.LocalMangaOutput
 import org.draken.usagi.local.data.output.LocalMangaUtil
 import org.draken.usagi.local.data.pdf.PdfMangaParser
 import org.draken.usagi.local.data.pdf.PdfPageRenderer
-import org.draken.usagi.local.data.pdf.isOfflineSeriesUri
+import org.draken.usagi.local.data.pdf.isOfflineFolderUri
+import org.draken.usagi.local.data.pdf.parseOfflineFolderUri
 import org.draken.usagi.local.domain.MangaLock
 import org.draken.usagi.local.domain.model.LocalManga
 import tsuki.model.ContentRating
@@ -58,7 +59,7 @@ class LocalMangaRepository @Inject constructor(
 	private val settings: AppSettings,
 	private val lock: MangaLock,
 	private val pdfPageRenderer: PdfPageRenderer,
-	private val offlineSeriesResolver: org.draken.usagi.local.domain.offline.OfflineSeriesResolver,
+	private val offlineFolderMangaBuilder: org.draken.usagi.local.domain.offline.OfflineFolderMangaBuilder,
 ) : MangaRepository {
 
 	override val source = LocalMangaSource
@@ -134,12 +135,12 @@ class LocalMangaRepository @Inject constructor(
 	}
 
 	override suspend fun getDetails(manga: Manga): Manga = when {
-		isOfflineSeriesUri(manga.url.toUri()) -> {
-			val (rootUri, seriesKey) = requireNotNull(
-				org.draken.usagi.local.data.pdf.parseOfflineSeriesUri(manga.url.toUri()),
-			) { "Malformed offline series uri: ${manga.url}" }
-			requireNotNull(offlineSeriesResolver.buildManga(rootUri, seriesKey)) {
-				"Could not read offline series: $seriesKey"
+		isOfflineFolderUri(manga.url.toUri()) -> {
+			val rootUri = requireNotNull(parseOfflineFolderUri(manga.url.toUri())) {
+				"Malformed offline folder uri: ${manga.url}"
+			}
+			requireNotNull(offlineFolderMangaBuilder.buildManga(rootUri)) {
+				"Could not read offline folder: $rootUri"
 			}
 		}
 

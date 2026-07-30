@@ -9,36 +9,29 @@ import org.draken.usagi.core.ui.BaseViewModel
 import org.draken.usagi.core.util.ext.MutableEventFlow
 import org.draken.usagi.core.util.ext.call
 import org.draken.usagi.local.data.LocalStorageManager
-import org.draken.usagi.local.data.pdf.OfflineFile
-import org.draken.usagi.local.data.pdf.OfflineFolderScanner
-import org.draken.usagi.local.domain.offline.OpenOfflineFileUseCase
-import org.draken.usagi.local.domain.offline.OpenOfflineResult
+import org.draken.usagi.local.domain.offline.OfflineFolderMangaBuilder
+import tsuki.model.Manga
 import javax.inject.Inject
 
 @HiltViewModel
 class OfflineReaderViewModel @Inject constructor(
-	private val scanner: OfflineFolderScanner,
-	private val openOfflineFile: OpenOfflineFileUseCase,
+	private val mangaBuilder: OfflineFolderMangaBuilder,
 	private val storageManager: LocalStorageManager,
-	private val prefs: OfflineReaderPrefs,
+	private val libraryPrefs: OfflineLibraryPrefs,
 ) : BaseViewModel() {
 
-	private val _items = MutableStateFlow(emptyList<OfflineFile>())
-	val items = _items.asStateFlow()
+	private val _library = MutableStateFlow(emptyList<Manga>())
+	val library = _library.asStateFlow()
 
-	private val _hasScannedOnce = MutableStateFlow(false)
-	val hasScannedOnce = _hasScannedOnce.asStateFlow()
+	private val _hasLoadedOnce = MutableStateFlow(false)
+	val hasLoadedOnce = _hasLoadedOnce.asStateFlow()
 
-	private var lastTreeUri: Uri? = null
+	private val _onMangaReady = MutableEventFlow<Manga>()
+	val onMangaReady get() = _onMangaReady
 
 	init {
-		// Auto-restore the last folder the user picked, so they don't have to re-pick it
-		// every time they open this screen.
-		prefs.lastFolderUri?.let { onFolderPicked(it) }
+		reloadLibrary()
 	}
-
-	private val _onMangaReady = MutableEventFlow<OpenOfflineResult>()
-	val onMangaReady get() = _onMangaReady
 
 	/** Called after the user picks a folder via ACTION_OPEN_DOCUMENT_TREE. */
 	fun onFolderPicked(treeUri: Uri) {
@@ -46,22 +39,24 @@ class OfflineReaderViewModel @Inject constructor(
 			// Persist the grant so the folder can be re-scanned across app restarts
 			// without asking the user to pick it again.
 			storageManager.takePermissions(treeUri)
-			lastTreeUri = treeUri
-			prefs.lastFolderUri = treeUri
-			_items.value = scanner.scan(treeUri)
-			_hasScannedOnce.value = true
+			libraryPrefs.addFolder(treeUri)
+			reloadLibraryInternal()
 		}
 	}
 
-	fun onFileClick(file: OfflineFile) {
-		val rootUri = lastTreeUri ?: return
+	fun onLibraryItemClick(manga: Manga) {
+		_onMangaReady.call(manga)
+	}
+
+	private fun reloadLibrary() {
 		launchLoadingJob(Dispatchers.Default) {
-			val result = openOfflineFile(file, rootUri)
-			if (result != null) {
-				_onMangaReady.call(result)
-			} else {
-				errorEvent.call(IllegalStateException("Could not open ${file.displayName}"))
-			}
+			reloadLibraryInternal()
 		}
+	}
+
+	private suspend fun reloadLibraryInternal() {
+		val mangaList = libraryPrefs.folders().mapNotNull { folderUri -> mangaBuilder.buildManga(folderUri) }
+		_library.value = mangaList
+		_hasLoadedOnce.value = true
 	}
 }

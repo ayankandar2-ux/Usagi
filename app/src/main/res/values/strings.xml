@@ -491,8 +491,8 @@
     <string name="on_device">On device</string>
     <string name="directories">Directories</string>
     <string name="offline_reader">Offline Reader</string>
-    <string name="offline_reader_select_folder">Select folder</string>
-    <string name="offline_reader_pick_folder_hint">Select a folder to scan it for CBZ and PDF files</string>
+    <string name="offline_reader_select_folder">Add folder</string>
+    <string name="offline_reader_empty_library_hint">Tap \"Add folder\" to add a manga folder — each one becomes its own entry, sorted and ready to read</string>
     <string name="main_screen_sections">Main screen sections</string>
     <string name="items_limit_exceeded">No more items can be added</string>
     <string name="to_top">To top</string>

@@ -25,12 +25,12 @@
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
 		android:clipToPadding="false"
-		android:orientation="vertical"
 		android:paddingBottom="@dimen/list_spacing_large"
 		android:scrollbars="vertical"
-		app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+		app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
 		app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior"
-		tools:listitem="@layout/item_offline_file" />
+		app:spanCount="3"
+		tools:listitem="@layout/item_offline_folder" />
 
 	<TextView
 		android:id="@+id/textViewEmpty"
@@ -39,7 +39,7 @@
 		android:layout_gravity="center"
 		android:gravity="center"
 		android:padding="32dp"
-		android:text="@string/offline_reader_pick_folder_hint"
+		android:text="@string/offline_reader_empty_library_hint"
 		android:textAppearance="?attr/textAppearanceBody1"
 		android:visibility="gone"
 		app:layout_anchor="@id/recyclerView" />
